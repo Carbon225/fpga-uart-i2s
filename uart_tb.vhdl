@@ -13,10 +13,10 @@ architecture tb of uart_tb is
         );
         port (
             i_clk : in std_logic;
-            i_data : in std_logic_vector(7 downto 0);
-            i_write : in std_logic;
+            o_tx : out std_logic;
+            i_valid : in std_logic;
             o_ready : out std_logic;
-            o_tx : out std_logic
+            i_data : in std_logic_vector(7 downto 0)
         );
     end component uart_tx;
 
@@ -27,8 +27,9 @@ architecture tb of uart_tb is
         port (
             i_clk : in std_logic;
             i_rx : in std_logic;
-            o_data : out std_logic_vector(7 downto 0);
-            o_valid : out std_logic
+            o_valid : out std_logic;
+            i_ready : in std_logic;
+            o_data : out std_logic_vector(7 downto 0)
         );
     end component uart_rx;
 
@@ -36,29 +37,29 @@ architecture tb of uart_tb is
     signal r_tx_clk : std_logic := '0';
     signal r_txrx : std_logic;
     
-    signal r_tx_write : std_logic := '0';
+    signal r_tx_valid : std_logic := '1';
     signal r_tx_ready : std_logic;
-    signal r_tx_data : std_logic_vector(7 downto 0) := (others => '1');
+    signal r_tx_data : std_logic_vector(7 downto 0) := (others => '0');
     
     signal r_rx_valid : std_logic;
-    signal r_rx_data_buf : std_logic_vector(7 downto 0);
+    signal r_rx_ready : std_logic := '1';
     signal r_rx_data : std_logic_vector(7 downto 0);
 
 begin
 
     r_clk <= not r_clk after 2.855445906432749 ns;
-    r_tx_clk <= not r_tx_clk after 40 ns;
+    r_tx_clk <= not r_tx_clk after 10 ns;
 
     uart_tx_inst : uart_tx
         generic map (
-            c_clk_div => 1
+            c_clk_div => 4
         )
         port map (
             i_clk => r_tx_clk,
-            i_data => r_tx_data,
-            i_write => r_tx_write,
+            o_tx => r_txrx,
+            i_valid => r_tx_valid,
             o_ready => r_tx_ready,
-            o_tx => r_txrx
+            i_data => r_tx_data
         );
 
     uart_rx_inst : uart_rx
@@ -68,29 +69,18 @@ begin
         port map (
             i_clk => r_clk,
             i_rx => r_txrx,
-            o_data => r_rx_data_buf,
-            o_valid => r_rx_valid
+            o_valid => r_rx_valid,
+            i_ready => r_rx_ready,
+            o_data => r_rx_data
         );
 
     p_tx : process (r_tx_clk)
     begin
         if rising_edge(r_tx_clk) then
-            if r_tx_ready = '1' and r_tx_write = '0' then
+            if r_tx_valid = '1' and r_tx_ready = '1' then
                 r_tx_data <= std_logic_vector(unsigned(r_tx_data) + 1);
-                r_tx_write <= '1';
-            else
-                r_tx_write <= '0';
             end if;
         end if;
     end process p_tx;
-
-    p_rx : process (r_clk)
-    begin
-        if rising_edge(r_clk) then
-            if r_rx_valid = '1' then
-                r_rx_data <= r_rx_data_buf;
-            end if;
-        end if;
-    end process p_rx;
 
 end architecture tb;

@@ -7,10 +7,10 @@ entity uart_tx is
     );
     port (
         i_clk : in std_logic;
-        i_data : in std_logic_vector(7 downto 0);
-        i_write : in std_logic;
+        o_tx : out std_logic;
+        i_valid : in std_logic;
         o_ready : out std_logic;
-        o_tx : out std_logic
+        i_data : in std_logic_vector(7 downto 0)
     );
 end entity uart_tx;
 
@@ -54,7 +54,7 @@ begin
     p_tx : process (i_clk)
     begin
         if rising_edge(i_clk) then
-            if r_ready = '1' and i_write = '1' then
+            if r_ready = '1' and i_valid = '1' then
                 r_fetch <= '1';
                 r_data <= i_data;
                 r_ready <= '0';

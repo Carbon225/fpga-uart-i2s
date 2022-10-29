@@ -8,8 +8,9 @@ entity uart_rx is
     port (
         i_clk : in std_logic;
         i_rx : in std_logic;
-        o_data : out std_logic_vector(7 downto 0);
-        o_valid : out std_logic
+        o_valid : out std_logic;
+        i_ready : in std_logic;
+        o_data : out std_logic_vector(7 downto 0)
     );
 end entity uart_rx;
 
@@ -17,10 +18,13 @@ architecture rtl of uart_rx is
 
     type t_state is (s_idle, s_start, s_data, s_stop);
     signal r_state : t_state := s_idle;
-    signal r_bit : integer range 0 to 7 := 0;
-    signal r_data : std_logic_vector(7 downto 0) := (others => '0');
+
+    signal r_bit : integer range 0 to 7;
+    signal r_cnt : integer range 0 to c_clk_div - 1;
+    signal r_buf : std_logic_vector(7 downto 0);
+
     signal r_valid : std_logic := '0';
-    signal r_cnt : integer range 0 to c_clk_div - 1 := 0;
+    signal r_data : std_logic_vector(7 downto 0);
 
 begin
 
@@ -30,7 +34,7 @@ begin
     p_rx : process (i_clk)
     begin
         if rising_edge(i_clk) then
-            if r_valid = '1' then
+            if r_valid = '1' and i_ready = '1' then
                 r_valid <= '0';
             end if;
     
@@ -41,7 +45,7 @@ begin
                         r_cnt <= 0;
                     end if;
                 when s_start =>
-                    if r_cnt = c_clk_div / 2 then
+                    if r_cnt = c_clk_div / 2 - 1 then
                         if i_rx = '0' then
                             r_state <= s_data;
                             r_bit <= 0;
@@ -54,7 +58,7 @@ begin
                     end if;
                 when s_data =>
                     if r_cnt = c_clk_div - 1 then
-                        r_data(r_bit) <= i_rx;
+                        r_buf(r_bit) <= i_rx;
                         r_cnt <= 0;
                         if r_bit = 7 then
                             r_state <= s_stop;
@@ -68,6 +72,7 @@ begin
                     if r_cnt = c_clk_div - 1 then
                         if i_rx = '1' then
                             r_valid <= '1';
+                            r_data <= r_buf;
                         end if;
                         r_state <= s_idle;
                     else
