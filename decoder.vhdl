@@ -38,23 +38,17 @@ begin
     o_valid <= r_valid;
     o_data <= r_out;
 
-    p_tx : process (i_clk)
+    p_decoder : process (i_clk)
     begin
         if rising_edge(i_clk) then
-            if r_valid = '1' and i_ready = '1' then
-                r_valid <= '0';
-            end if;
-        end if;
-    end process p_tx;
-
-    p_fsm : process (i_clk)
-    begin
-        if rising_edge(i_clk) then
+            -- if can accept data
             if i_valid = '1' and r_ready = '1' then
                 if i_data(0) = '1' then
+                    -- first byte
                     r_buf(6 downto 0) <= i_data(7 downto 1);
                     r_state <= s_wait_1;
                 else
+                    -- middle byte
                     case r_state is
                         when s_wait_0 =>
                         when s_wait_1 =>
@@ -73,7 +67,12 @@ begin
                     end case;
                 end if;
             end if;
+
+            -- invalidate excluding case s_wait_4
+            if r_valid = '1' and i_ready = '1' and i_data(0) = '0' and r_state = s_wait_4 then
+                r_valid <= '0';
+            end if;
         end if;
-    end process p_fsm;
+    end process p_decoder;
 
 end architecture rtl;
