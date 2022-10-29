@@ -69,6 +69,23 @@ architecture rtl of uart_i2s is
         );
     end component fifo;
 
+    component i2s_tx is
+        generic (
+            c_clk_div : positive
+        );
+        port (
+            i_clk : in std_logic;
+
+            i_valid : in std_logic;
+            o_ready : out std_logic;
+            i_data : in std_logic_vector(31 downto 0);
+
+            o_sck : out std_logic;
+            o_ws : out std_logic;
+            o_sd : out std_logic
+        );
+    end component i2s_tx;
+
     signal r_uart_valid : std_logic;
     signal r_uart_data : std_logic_vector(7 downto 0);
 
@@ -130,6 +147,22 @@ begin
             o_empty => open,
             o_thr => open,
             o_full => open
+        );
+
+    i2s_inst : i2s_tx
+        generic map (
+            c_clk_div => c_i2s_div
+        )
+        port map (
+            i_clk => i_clk,
+
+            i_valid => r_fifo_valid,
+            o_ready => r_i2s_ready,
+            i_data => r_fifo_data,
+
+            o_sck => o_sck,
+            o_ws => o_ws,
+            o_sd => o_sd
         );
 
 end architecture rtl;

@@ -2,50 +2,115 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 entity i2s_tx is
+    generic (
+        c_clk_div : positive
+    );
     port (
-        i_word : in std_logic_vector(31 downto 0);
-        o_load : out std_logic;
+        i_clk : in std_logic;
 
-        i_sck : in std_logic;
-        i_ws : in std_logic;
+        i_valid : in std_logic;
+        o_ready : out std_logic;
+        i_data : in std_logic_vector(31 downto 0);
+
+        o_sck : out std_logic;
+        o_ws : out std_logic;
         o_sd : out std_logic
     );
 end entity i2s_tx;
 
 architecture rtl of i2s_tx is
-    
+
+    component clkdiv
+        generic (
+            c_div : positive
+        );
+        port (
+            i_clk : in std_logic;
+            o_div : out std_logic
+        );
+    end component clkdiv;
+
+    signal r_sck_div : std_logic;
+    signal r_ws_div : std_logic;
+
+    signal r_sck : std_logic := '1';
+    signal r_ws : std_logic := '1';
+
+    signal r_buf : std_logic_vector(31 downto 0) := (others => '0');
+    signal r_loaded : std_logic := '0';
     signal r_reg : std_logic_vector(31 downto 0);
-    signal r_ws_d1 : std_logic;
-    signal r_ws_d2 : std_logic;
-    signal r_load : std_logic;
+
+    signal r_ready : std_logic := '1';
 
 begin
-    
-    r_load <= r_ws_d2 and not r_ws_d1;
-    
-    o_load <= r_load;
 
+    clkdiv_sck : clkdiv
+        generic map (
+            c_div => c_clk_div
+        )
+        port map (
+            i_clk => i_clk,
+            o_div => r_sck_div
+        );
+
+    clkdiv_ws : clkdiv
+        generic map (
+            c_div => c_clk_div * 32
+        )
+        port map (
+            i_clk => i_clk,
+            o_div => r_ws_div
+        );
+
+    o_ready <= r_ready;
+    o_sck <= r_sck;
+    o_ws <= r_ws;
     o_sd <= r_reg(r_reg'high);
 
-    p_delay_ws : process (i_sck) is
+    p_load : process (i_clk) is
     begin
-        if rising_edge(i_sck) then
-            r_ws_d1 <= i_ws;
-            r_ws_d2 <= r_ws_d1;
-        end if;
-    end process p_delay_ws;
-
-    p_reg : process (i_sck) is
-    begin
-        if falling_edge(i_sck) then
-            if r_load = '1' then
-                -- load
-                r_reg <= i_word;
-            else
-                -- shift out MSB
-                r_reg <= r_reg(r_reg'high - 1 downto r_reg'low) & '0';
+        if rising_edge(i_clk) then
+            if r_ws_div = '1' and r_ws = '1' then
+                if i_valid = '1' and r_ready = '1' then
+                    r_buf <= i_data;
+                    r_ready <= '0';
+                end if;
+                r_loaded <= '1';
             end if;
         end if;
-    end process p_reg;
-    
+    end process p_load;
+
+    p_sck : process (i_clk) is
+    begin
+        if rising_edge(i_clk) then
+            if r_sck_div = '1' then
+                r_sck <= not r_sck;
+            end if;
+        end if;
+    end process p_sck;
+
+    p_ws : process (i_clk) is
+    begin
+        if rising_edge(i_clk) then
+            if r_ws_div = '1' then
+                r_ws <= not r_ws;
+            end if;
+        end if;
+    end process p_ws;
+
+    p_shift : process (i_clk) is
+    begin
+        if rising_edge(i_clk) then
+            if r_sck_div = '1' and r_sck = '1' then
+                if r_loaded = '1' then
+                    r_loaded <= '0';
+                    r_reg <= r_buf;
+                    r_ready <= '1';
+                else
+                    r_reg <= r_reg(r_reg'high - 1 downto r_reg'low) & '0';
+                end if;
+            end if;
+        end if;
+    end process p_shift;
+
 end architecture rtl;
