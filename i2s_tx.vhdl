@@ -67,40 +67,31 @@ begin
     o_ws <= r_ws;
     o_sd <= r_reg(r_reg'high);
 
-    p_load : process (i_clk) is
+    p_i2s : process (i_clk) is
     begin
         if rising_edge(i_clk) then
-            if r_ws_div = '1' and r_ws = '1' then
-                if i_valid = '1' and r_ready = '1' then
-                    r_buf <= i_data;
-                    r_ready <= '0';
-                end if;
-                r_loaded <= '1';
-            end if;
-        end if;
-    end process p_load;
-
-    p_sck : process (i_clk) is
-    begin
-        if rising_edge(i_clk) then
+            -- sck
             if r_sck_div = '1' then
                 r_sck <= not r_sck;
             end if;
-        end if;
-    end process p_sck;
 
-    p_ws : process (i_clk) is
-    begin
-        if rising_edge(i_clk) then
+            -- ws
             if r_ws_div = '1' then
                 r_ws <= not r_ws;
             end if;
-        end if;
-    end process p_ws;
 
-    p_shift : process (i_clk) is
-    begin
-        if rising_edge(i_clk) then
+            -- load data
+            if i_valid = '1' and r_ready = '1' then
+                r_buf <= i_data;
+                r_ready <= '0';
+            end if;
+
+            -- delay data
+            if r_ws_div = '1' and r_ws = '1' then
+                r_loaded <= '1';
+            end if;
+
+            -- shift out data
             if r_sck_div = '1' and r_sck = '1' then
                 if r_loaded = '1' then
                     r_loaded <= '0';
@@ -111,6 +102,6 @@ begin
                 end if;
             end if;
         end if;
-    end process p_shift;
+    end process p_i2s;
 
 end architecture rtl;
