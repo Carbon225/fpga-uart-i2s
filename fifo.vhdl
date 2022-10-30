@@ -60,6 +60,10 @@ begin
     o_valid <= r_valid;
     o_ready <= r_ready;
 
+    o_empty <= r_empty;
+    o_thr <= r_thr;
+    o_full <= r_full;
+
     p_fifo : process (i_clk) is
     begin
         if rising_edge(i_clk) then
