@@ -8,7 +8,9 @@ entity uart_i2s is
     );
     port (
         i_clk : in std_logic;
+        
         i_rx : in std_logic;
+        o_rts : out std_logic;
 
         o_sck : out std_logic;
         o_ws : out std_logic;
@@ -97,9 +99,13 @@ architecture rtl of uart_i2s is
     signal r_fifo_valid : std_logic;
     signal r_fifo_data : std_logic_vector(31 downto 0);
 
+    signal r_fifo_thr : std_logic;
+
     signal r_i2s_ready : std_logic;
 
 begin
+
+    o_rts <= r_fifo_thr;
 
     uart_inst : uart_rx
         generic map (
@@ -145,7 +151,7 @@ begin
             o_data => r_fifo_data,
 
             o_empty => open,
-            o_thr => open,
+            o_thr => r_fifo_thr,
             o_full => open
         );
 
